@@ -1,0 +1,545 @@
+```
+%Generalized Staircase
+clear all
+N = 48; 
+% ADD TWO to this for total number of cells (half-cells on each end)
+% Number of cells (should be even if you want red-blue pairs.)
+% Should also be N>0 otherwise edge case will break (there are no red or
+% blue cells in that case, only half-cells)
+
+%parameters
+tensC = 1.5;
+gamma = 0.7;
+tensS = gamma*tensC;
+cell_opacity = .5;
+cell_radius = (7E-6); %microns
+cross_sectional_area = 3.1415926*(cell_radius)^2; %pi*r^2
+eccentricity = 0;
+lambda =1.3; %wild-type lambda 1.3
+%the following are computed parameters
+%dependent on the values above
+%These formulas should not be changed
+tubeD = 2*sqrt(cross_sectional_area/pi);
+celld = tubeD/lambda;
+%celld = cell_radius*2;
+cell_volume = (4*pi*(celld/2)^3)/3;
+initial_height = (cell_volume/cross_sectional_area)*2.5;% --exclude *2 if checking bead instable
+%initial position computed parameters
+radiusx = sqrt(cross_sectional_area/(pi*sqrt(1-eccentricity^2)));
+radiusy = sqrt((1-eccentricity^2)*radiusx^2);
+centerx = radiusx;
+centery = radiusy;
+
+%number of vertices
+numVertex = 8+(3*N);
+vertMat = zeros(numVertex, 4); %one column for id, then x, y, z coords
+vertMat(:,1) = 1:1:numVertex;
+
+% Create vertices
+% fill in first four vertices then last four
+vertMat(1,2) = centerx-radiusx;
+vertMat(1,3) = centery-radiusy;
+vertMat(1,4) = 0;
+vertMat(2,2) = centerx+radiusx;
+vertMat(2,3) = centery-radiusy;
+vertMat(2,4) = 0;
+vertMat(3,2) = centerx+radiusx;
+vertMat(3,3) = centery+radiusy;
+vertMat(3,4) = 0;
+vertMat(4,2) = centerx-radiusx;
+vertMat(4,3) = centery+radiusy;
+vertMat(4,4) = 0;
+vertMat(numVertex-3,2) = centerx-radiusx;
+vertMat(numVertex-3,3) = centery-radiusy;
+vertMat(numVertex-3,4) = (N+1)*initial_height/2;
+vertMat(numVertex-2,2) = centerx+radiusx;
+vertMat(numVertex-2,3) = centery-radiusy;
+vertMat(numVertex-2,4) = (N+1)*initial_height/2;
+vertMat(numVertex-1,2) = centerx+radiusx;
+vertMat(numVertex-1,3) = centery+radiusy;
+vertMat(numVertex-1,4) = (N+1)*initial_height/2;
+vertMat(numVertex,2) = centerx-radiusx;
+vertMat(numVertex,3) = centery+radiusy;
+vertMat(numVertex,4) = (N+1)*initial_height/2;
+
+%now fill in middle vertices
+for i=1:N
+   if rem(i,2)~=0 %if an odd level, odd numerator for height and orientation
+      vertMat(2+3*i,2) = centerx-radiusx;
+      vertMat(2+3*i,3) = centery-radiusy;
+      vertMat(2+3*i,4) = i*initial_height/2;
+      vertMat(3+3*i,2) = centerx+radiusx;
+      vertMat(3+3*i,3) = centery+radiusy;
+      vertMat(3+3*i,4) = i*initial_height/2;
+      vertMat(4+3*i,2) = centerx-radiusx;
+      vertMat(4+3*i,3) = centery+radiusy;
+      vertMat(4+3*i,4) = i*initial_height/2;
+   end
+   if rem(i,2)==0 %if an even level, even numerator for height and orientation
+      vertMat(2+3*i,2) = centerx-radiusx;
+      vertMat(2+3*i,3) = centery-radiusy;
+      vertMat(2+3*i,4) = i*initial_height/2;
+      vertMat(3+3*i,2) = centerx+radiusx;
+      vertMat(3+3*i,3) = centery-radiusy;
+      vertMat(3+3*i,4) = i*initial_height/2;
+      vertMat(4+3*i,2) = centerx+radiusx;
+      vertMat(4+3*i,3) = centery+radiusy;
+      vertMat(4+3*i,4) = i*initial_height/2;
+   end
+end
+
+%Create edges
+totalEdges = 14+(N*6);
+edgeMat = zeros(totalEdges,3);
+edgeMat(:,1) = 1:1:totalEdges;
+
+%bottom layer of edges + stilts upward
+edgeMat(1,2) = 1;
+edgeMat(1,3) = 2;
+edgeMat(2,2) = 2;
+edgeMat(2,3) = 3;
+edgeMat(3,2) = 3;
+edgeMat(3,3) = 4;
+edgeMat(4,2) = 4;
+edgeMat(4,3) = 1;
+edgeMat(5,2) = 1;
+edgeMat(5,3) = 3;
+edgeMat(6,2) = 1;
+edgeMat(6,3) = 5;
+edgeMat(7,2) = 2;
+edgeMat(7,3) = 9;
+edgeMat(8,2) = 3;
+edgeMat(8,3) = 6;
+edgeMat(9,2) = 4;
+edgeMat(9,3) = 7;
+%now top layer of edges
+edgeMat(totalEdges-4,2) = numVertex-3;
+edgeMat(totalEdges-4,3) = numVertex-2;
+edgeMat(totalEdges-3,2) = numVertex-2;
+edgeMat(totalEdges-3,3) = numVertex-1;
+edgeMat(totalEdges-2,2) = numVertex-1;
+edgeMat(totalEdges-2,3) = numVertex;
+edgeMat(totalEdges-1,2) = numVertex;
+edgeMat(totalEdges-1,3) = numVertex-3;
+edgeMat(totalEdges,2) = numVertex-3;
+edgeMat(totalEdges,3) = numVertex-1;
+%now loop through the layers
+%handle odd layers differently than even based on orientation of diagonal
+for i=1:(N)
+    %create edges for flat surface
+    edgeMat(2*(5+(3*(i-1))),2) = 5+(3*(i-1)); 
+    edgeMat(2*(5+(3*(i-1))),3) = 5+(3*(i-1))+1;
+    edgeMat(2*(5+(3*(i-1)))+1,2) = 5+(3*(i-1))+1; 
+    edgeMat(2*(5+(3*(i-1)))+1,3) = 5+(3*(i-1))+2;
+    edgeMat(2*(5+(3*(i-1)))+2,2) = 5+(3*(i-1))+2; 
+    edgeMat(2*(5+(3*(i-1)))+2,3) = 5+(3*(i-1));
+end 
+   %now use remainder trick to create upward stilts in correct spots
+for i=1:(N-1)  
+   if rem(i,2)~=0 %this is an odd row
+      edgeMat(7+(6*i),2) = 5+(3*(i-1));
+      edgeMat(7+(6*i),3) = 5+(3*(i-1))+3;
+      edgeMat(7+(6*i)+1,2) = 5+(3*(i-1))+1;
+      edgeMat(7+(6*i)+1,3) = (5+(3*(i-1))+1)+4; %for even, it would be +2
+      edgeMat(7+(6*i)+2,2) = 5+(3*(i-1))+2;
+      edgeMat(7+(6*i)+2,3) = (5+(3*(i-1))+2)+6;
+   end
+   if rem(i,2)==0
+     edgeMat(7+(6*i),2) = 5+(3*(i-1));
+      edgeMat(7+(6*i),3) = 5+(3*(i-1))+3;
+      edgeMat(7+(6*i)+1,2) = 5+(3*(i-1))+1;
+      edgeMat(7+(6*i)+1,3) = (5+(3*(i-1))+1)+6; %for even, it would be +2
+      edgeMat(7+(6*i)+2,2) = 5+(3*(i-1))+2;
+      edgeMat(7+(6*i)+2,3) = (5+(3*(i-1))+2)+2;  
+   end
+end
+ %this is for the edge case, where you're on the last level before the
+   %top
+if rem(N,2)~=0 %odd case
+    edgeMat(totalEdges-7,2) = numVertex-6;
+    edgeMat(totalEdges-7,3) = numVertex-3;
+    edgeMat(totalEdges-6,2) = numVertex-5;
+    edgeMat(totalEdges-6,3) = numVertex-1;
+    edgeMat(totalEdges-5,2) = numVertex-4;
+    edgeMat(totalEdges-5,3) = numVertex;
+end
+if rem(N,2)==0 %even case
+    edgeMat(totalEdges-11,2) = numVertex-7;
+    edgeMat(totalEdges-11,3) = numVertex;
+    edgeMat(totalEdges-7,2) = numVertex-6;
+    edgeMat(totalEdges-7,3) = numVertex-3;
+    edgeMat(totalEdges-6,2) = numVertex-5;
+    edgeMat(totalEdges-6,3) = numVertex-2;
+    edgeMat(totalEdges-5,2) = numVertex-4;
+    edgeMat(totalEdges-5,3) = numVertex-1;
+end
+
+%Create faces
+totalFaces = 4+N+(N+1)+(2*N)+4; %bottom 2 plus top 2 plus shared faces (N+1) plus cell walls (2*N) plus half-cell walls (4)
+faceMat = zeros(totalFaces,6);
+faceMat(:,1) = 1:1:totalFaces;
+%bottom of half-cell
+faceMat(1,2) = 5; 
+faceMat(1,3) = 3;
+faceMat(1,4) = 4;
+%sides of half-cell
+faceMat(2,2) = 4; 
+faceMat(2,3) = 6;
+faceMat(2,4) = -12;
+faceMat(2,5) = -9; 
+faceMat(3,2) = 3;
+faceMat(3,3) = 9;
+faceMat(3,4) = -11;
+faceMat(3,5) = -8;
+%bottom of first red cell or bottom of second half-cell if N=0. Always
+%here, so hard-coded
+faceMat(4,2) = 1;
+faceMat(4,3) = 2;
+faceMat(4,4) = -5;
+%short sides of top half-cell
+%depends on whether top half-cell is on right or left
+if rem(N,2)==0 %even case
+    faceMat(totalFaces-3,2) = totalEdges-10;
+    faceMat(totalFaces-3,3) = totalEdges-6;
+    faceMat(totalFaces-3,4) = -(totalEdges-4);
+    faceMat(totalFaces-3,5) = -(totalEdges-7);
+    faceMat(totalFaces-2,2) = totalEdges-9;
+    faceMat(totalFaces-2,3) = totalEdges-5;
+    faceMat(totalFaces-2,4) = -(totalEdges-3);
+    faceMat(totalFaces-2,5) = -(totalEdges-6);
+end
+if rem(N,2)~=0 %odd case
+    faceMat(totalFaces-3,2) = totalEdges-8;
+    faceMat(totalFaces-3,3) = totalEdges-7;
+    faceMat(totalFaces-3,4) = -(totalEdges-1);
+    faceMat(totalFaces-3,5) = -(totalEdges-5);
+    faceMat(totalFaces-2,2) = totalEdges-9;
+    faceMat(totalFaces-2,3) = totalEdges-5;
+    faceMat(totalFaces-2,4) = -(totalEdges-2);
+    faceMat(totalFaces-2,5) = -(totalEdges-6);
+end
+%top two triangular faces
+faceMat(totalFaces-1, 2) = totalEdges; 
+faceMat(totalFaces-1, 3) = totalEdges-2;
+faceMat(totalFaces-1, 4) = totalEdges-1;
+faceMat(totalFaces, 2) = totalEdges-4; 
+faceMat(totalFaces, 3) = totalEdges-3;
+faceMat(totalFaces, 4) = -totalEdges;
+
+%hard-code the middle and sides of the first red wall
+%it's the only one that doesn't fit the pattern
+if N>=1
+    faceMat(5,2) = 5;
+    faceMat(5,3) = 8;
+    faceMat(5,4) = -10;
+    faceMat(5,5) = -6; %this ends shared middle
+    faceMat(6,2) = 1;
+    faceMat(6,3) = 7;
+    faceMat(6,4) = -16;
+    faceMat(6,5) = -13; 
+    faceMat(6,6) = -6;%this ends one side
+    faceMat(7,2) = 2;
+    faceMat(7,3) = 8;
+    faceMat(7,4) = 14;
+    faceMat(7,5) = -17; 
+    faceMat(7,6) = -7;%this ends other side
+    %now the last horizontal piece and middle interface at the top
+    %tried not to hard-code but it breaks the pattern
+    faceMat(totalFaces-5,2) = totalEdges-10;
+    faceMat(totalFaces-5,3) = totalEdges-9;
+    faceMat(totalFaces-5,4) = totalEdges -8;
+    if rem(N,2) == 0 %top middle interface, even case
+        faceMat(totalFaces-4,2) = -(totalEdges-8);
+        faceMat(totalFaces-4,3) = totalEdges-5;
+        faceMat(totalFaces-4,4) = -totalEdges;
+        faceMat(totalFaces-4,5) = -(totalEdges-7);
+        %second-to-last middle interface to the top
+        faceMat(totalFaces-8,2) = totalEdges-16;
+        faceMat(totalFaces-8,3) = totalEdges-12;
+        faceMat(totalFaces-8,4) = totalEdges-8;
+        faceMat(totalFaces-8,5) = -(totalEdges-13);
+        %now the sides
+        faceMat(totalFaces-7,2) = totalEdges-14;
+        faceMat(totalFaces-7,3) = totalEdges-13;
+        faceMat(totalFaces-7,4) =  totalEdges-7; 
+        faceMat(totalFaces-7,5) = -(totalEdges-1);
+        faceMat(totalFaces-7,6) = -(totalEdges-11);
+        faceMat(totalFaces-6,2) = totalEdges-15;
+        faceMat(totalFaces-6,3) = totalEdges-11;
+        faceMat(totalFaces-6,4) = -(totalEdges-2);
+        faceMat(totalFaces-6,5) = -(totalEdges-5);
+        faceMat(totalFaces-6,6) = -(totalEdges-12);
+    end
+    if rem(N,2) ~= 0 %top middle interface, odd case
+        faceMat(totalFaces-4,2) = totalEdges-10;
+        faceMat(totalFaces-4,3) = totalEdges-6;
+        faceMat(totalFaces-4,4) = -totalEdges;
+        faceMat(totalFaces-4,5) = -(totalEdges-7);
+        %second-to-last middle interface to the top
+        faceMat(totalFaces-8,2) = -(totalEdges-16);
+        faceMat(totalFaces-8,3) = totalEdges-11;
+        faceMat(totalFaces-8,4) = -(totalEdges-10);
+        faceMat(totalFaces-8,5) = -(totalEdges-13);
+        %now the sides
+        faceMat(totalFaces-7,2) = totalEdges-16;
+        faceMat(totalFaces-7,3) = totalEdges-12;
+        faceMat(totalFaces-7,4) = -(totalEdges-4);
+        faceMat(totalFaces-7,5) = -(totalEdges-7);
+        faceMat(totalFaces-7,6) = -(totalEdges-14);
+        faceMat(totalFaces-6,2) = totalEdges-15;
+        faceMat(totalFaces-6,3) = totalEdges-11;
+        faceMat(totalFaces-6,4) = totalEdges-6;
+        faceMat(totalFaces-6,5) = -(totalEdges-3);
+        faceMat(totalFaces-6,6) = -(totalEdges-12);
+    end
+end
+
+
+%Work way up staircase - bottom then shared then walls
+if N>=1
+    for i=1:(N-1) %iterate over levels
+        for j=1:numVertex %search vertices for first vertex at that height
+           if ((vertMat(j,4) == i*initial_height/2) && (vertMat(j,2) == centerx-radiusx) && (vertMat(j,3) == centerx-radiusx))  
+                %now you have the first vertex on that surface!
+                %the first edge is the edge connecting the next vertex!
+                for k=1:totalEdges
+                   if (edgeMat(k,2) == j && edgeMat(k,3) == (j+1))
+                       %bottom, then sides, then shared middle
+                       %bottom always oriented up, sides always out,
+                       %middle toward +x
+                       faceMat(8+(4*(i-1)),2) = k;
+                       faceMat(8+(4*(i-1)),3) = k+1;
+                       faceMat(8+(4*(i-1)),4) = k+2;
+                       if i<(N-1) %the middle and sides algorithm only works until you get to a cell
+                           %which hits the bottom or the top - that's why
+                           %bottom is hard-coded as well!
+                           %now the shared middle - split into even and odd
+                           if rem(i,2)==0 %even case
+                               faceMat(9+(4*(i-1)),2) = -(k+2);
+                               faceMat(9+(4*(i-1)),3) = k+5;
+                               faceMat(9+(4*(i-1)),4) = -(k+6);
+                               faceMat(9+(4*(i-1)),5) = -(k+3);
+                               %now the sides
+                               faceMat(10+(4*(i-1)),2) = k;
+                               faceMat(10+(4*(i-1)),3) = k+4;
+                               faceMat(10+(4*(i-1)),4) = -(k+12);
+                               faceMat(10+(4*(i-1)),5) = -(k+9);
+                               faceMat(10+(4*(i-1)),6) = -(k+3);
+                               faceMat(11+(4*(i-1)),2) = k+1;
+                               faceMat(11+(4*(i-1)),3) = k+5;
+                               faceMat(11+(4*(i-1)),4) = k+10;
+                               faceMat(11+(4*(i-1)),5) = -(k+13);
+                               faceMat(11+(4*(i-1)),6) = -(k+4);
+                           end
+                           if rem(i,2)~=0 %odd case
+                               faceMat(9+(4*(i-1)),2) = k;
+                               faceMat(9+(4*(i-1)),3) = k+4;
+                               faceMat(9+(4*(i-1)),4) = k+8;
+                               faceMat(9+(4*(i-1)),5) = -(k+3);
+                               %now the sides
+                               faceMat(10+(4*(i-1)),2) = k+2;
+                               faceMat(10+(4*(i-1)),3) = k+3;
+                               faceMat(10+(4*(i-1)),4) = k+9;
+                               faceMat(10+(4*(i-1)),5) = -(k+14);
+                               faceMat(10+(4*(i-1)),6) = -(k+5);
+                               faceMat(11+(4*(i-1)),2) = k+1;
+                               faceMat(11+(4*(i-1)),3) = k+5;
+                               faceMat(11+(4*(i-1)),4) = -(k+13);
+                               faceMat(11+(4*(i-1)),5) = -(k+11);
+                               faceMat(11+(4*(i-1)),6) = -(k+4);
+                           end
+                       end    
+                   end
+                end
+           end   
+        end    
+    end
+end
+
+%Bodies
+totalBodies = N+2;
+bodyMat = zeros(N+2,7);
+bodyMat(:,1) = 1:1:totalBodies;
+
+%Orient faces correctly (check orientation of normals)
+
+%body 1 should always be the bottom half-cell
+%bottom half-cell always on left!
+bodyMat(1,2) = -1;
+bodyMat(1,3) = 2;
+bodyMat(1,4) = 3;
+bodyMat(1,5) = 5;
+bodyMat(1,6) = 8;
+%the last body should always be the top half-cell
+%if N even, half-cell on right
+%if N odd, half-cell on left!
+%hard-code the second-to-last body (which is the last full cell)
+%because it changes which faces it has based on odd vs even
+if rem(N,2)~=0 %odd case
+    bodyMat(totalBodies,2) = totalFaces-1;
+    bodyMat(totalBodies,3) = totalFaces-2;
+    bodyMat(totalBodies,4) = totalFaces-3;
+    bodyMat(totalBodies,5) = totalFaces-4;
+    bodyMat(totalBodies,6) = -(totalFaces-5);
+    bodyMat(totalBodies-1,2) = -(4*N);
+    bodyMat(totalBodies-1,3) = -(4*N+1);
+    bodyMat(totalBodies-1,4) = 4*N+2;
+    bodyMat(totalBodies-1,5) = 4*N+3;
+    bodyMat(totalBodies-1,6) = -(4*N+5);
+    bodyMat(totalBodies-1,7) = totalFaces;
+end
+if rem(N,2)==0 %even case
+   bodyMat(totalBodies,2) = totalFaces;
+   bodyMat(totalBodies,3) = totalFaces-2;
+   bodyMat(totalBodies,4) = totalFaces-3;
+   bodyMat(totalBodies,5) = -(totalFaces-4);
+   bodyMat(totalBodies,6) = -(totalFaces-5);
+   bodyMat(totalBodies-1,2) = -(4*N);
+   bodyMat(totalBodies-1,3) = 4*N+1;
+   bodyMat(totalBodies-1,4) = 4*N+2;
+   bodyMat(totalBodies-1,5) = 4*N+3;
+   bodyMat(totalBodies-1,6) = totalFaces-4;
+   bodyMat(totalBodies-1,7) = totalFaces-1;
+end
+
+%now the red cells and blue cells
+%might need to hard code the cell touching the bottom
+%might need to hard code the cell touching the top
+for i=1:(N-1)
+    bodyMat(i+1,2) = -(i*4);
+    if rem(i,2)~=0
+        bodyMat(i+1,3) = -((i*4)+1);
+        bodyMat(i+1,6) = -((i*4)+5);
+    end
+    if rem(i,2)==0
+        bodyMat(i+1,3) = (i*4)+1;
+        bodyMat(i+1,6) = (i*4)+5;
+    end
+    bodyMat(i+1,4) = (i*4)+2; %side already oriented out
+    bodyMat(i+1,5) = (i*4)+3; %side already oriented out
+    bodyMat(i+1,7) = (i*4)+8;
+end
+
+%rotate vertices 45 degrees 
+centerOfRotX = radiusx/2;
+centerOfRotY = radiusy/2;
+for i=1:numVertex
+    newX = (vertMat(i,2)-centerOfRotX); %translate center of rotation to origin
+    newY = (vertMat(i,3)-centerOfRotY); %same as above
+    newX2 = (newX-newY)/sqrt(2);
+    newY2 = (newX+newY)/sqrt(2); 
+    newX3 = newX2+centerOfRotX;
+    newY3 = newY2+centerOfRotY;
+    vertMat(i,2) = newX3;
+    vertMat(i,3) = newY3;
+end
+
+
+% Now write the file to text
+
+fileID = fopen('staircase_init_geom.txt','wt');
+%fprintf(fileID, 'GRAVITY_CONSTANT 0\n');
+%CONSIDER PUTTING FILE PATH HERE
+fprintf(fileID, strcat('PARAMETER tensC = ',string(tensC),'\n'));
+fprintf(fileID, strcat('PARAMETER gamma = ',string(gamma),'\n'));
+fprintf(fileID, strcat('PARAMETER tensS = ',string(gamma*tensC),'\n'));
+fprintf(fileID, strcat('PARAMETER cell_opacity = ',string(cell_opacity),'\n'));
+fprintf(fileID, strcat('PARAMETER cross_sectional_area = ',string(cross_sectional_area),'\n'));
+fprintf(fileID, strcat('PARAMETER eccentricity = ',string(eccentricity),'\n'));
+fprintf(fileID, strcat('PARAMETER lambda = ',string(lambda),'\n'));
+fprintf(fileID, '//The following are computed parameters.\n');
+fprintf(fileID, '//Do not change the formulas unless necessary.\n');
+fprintf(fileID, 'PARAMETER tubeD = 2*sqrt(cross_sectional_area/pi)\n');
+fprintf(fileID, 'PARAMETER celld = tubeD/lambda\n');
+fprintf(fileID, 'PARAMETER cell_volume = (4*pi*(celld/2)^3)/3\n');
+fprintf(fileID, 'PARAMETER initial_height = 2*cell_volume/cross_sectional_area\n');
+fprintf(fileID, '//initial positioning\n');
+fprintf(fileID, 'PARAMETER radiusx = sqrt(cross_sectional_area/(pi*sqrt(1-eccentricity^2)))\n');
+fprintf(fileID, 'PARAMETER radiusy = sqrt((1-eccentricity^2)*radiusx^2)\n');
+fprintf(fileID, 'PARAMETER centerx = radiusx\n');
+fprintf(fileID, 'PARAMETER centery = radiusy\n');
+%fprintf(fileID, 'constraint 1 //constrains bottom to z=0\n');
+%fprintf(fileID, 'formula: x3 = 0\n\n');
+%fprintf(fileID, 'constraint 2 //constrains top to z=initial_height\n');
+%fprintf(fileID, strcat('formula: x3 = ',string(N+1),'*initial_height/2\n\n'));
+fprintf(fileID, 'vertices\n');
+for i=1:numVertex
+   if i<=4 
+       fprintf(fileID,'%d %f %f %f \n', [vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);   
+   end
+   if i>=numVertex-3
+       fprintf(fileID,'%d %f %f %f \n', [vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);    
+   end
+   if (i>4 && i<numVertex-3)
+   fprintf(fileID,'%d %f %f %f \n',[vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);
+   end
+end
+fprintf(fileID, '\nedges\n');
+for i=1:totalEdges
+   if i<=5
+      fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]); 
+   end
+   if (i>5 && i<totalEdges-4)
+       fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]);
+   end
+   if i>=totalEdges-4
+      fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]); 
+   end
+end
+
+%need middle faces, so can change their tension correctly in face section
+middleMat = zeros(1,N+1);
+for i=0:N
+   middleMat(1,i+1)=(4*i)+5; 
+end
+
+flatMat = zeros(1,N);
+for i=0:N-1
+   flatMat(1,i+1)=(4*i)+8; 
+end
+
+fprintf(fileID,'\nfaces\n');
+
+for i=1:totalFaces
+    if (i==1 || i==4)
+        fprintf(fileID,'%d %d %d %d tension tensS+tensC color cyan\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4)]);
+    elseif (i==totalFaces-1 || i==totalFaces)
+        fprintf(fileID,'%d %d %d %d tension tensS+tensC color cyan\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4)]);
+    elseif ismember(i,middleMat)
+        fprintf(fileID,'%d %d %d %d %d tension 2*tensC color magenta\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    elseif (i==2 || i==3 || i==totalFaces-2 || i==totalFaces-3) 
+        fprintf(fileID,'%d %d %d %d %d tension tensS+tensC color cyan\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    elseif ismember(i,flatMat)
+        fprintf(fileID,'%d %d %d %d tension 2*tensC color magenta\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4)]);
+    else
+        fprintf(fileID,'%d %d %d %d %d %d tension tensS+tensC color cyan\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5);faceMat(i,6)]);
+    end
+end
+    
+fprintf(fileID, '\nbodies\n');
+for i=1:totalBodies
+   if bodyMat(i,7)==0
+      fprintf(fileID,'%d %d %d %d %d %d volume cell_volume\n',[bodyMat(i,1);bodyMat(i,2);bodyMat(i,3);bodyMat(i,4);bodyMat(i,5);bodyMat(i,6)]); 
+   end
+   if bodyMat(i,7)~=0
+       fprintf(fileID,'%d %d %d %d %d %d %d volume cell_volume\n',[bodyMat(i,1);bodyMat(i,2);bodyMat(i,3);bodyMat(i,4);bodyMat(i,5);bodyMat(i,6);bodyMat(i,7)]); 
+   end
+end
+
+fprintf(fileID, '\n\nread\n');
+fprintf(fileID, 'U\n'); %for conjugate gradient method
+fprintf(fileID, 'delete facets where area=0\n');
+fprintf(fileID, 'set facet.opacity cell_opacity\n');
+fprintf(fileID, 'unfix radiusx\n');
+fprintf(fileID, 'unfix radiusy\n');
+fprintf(fileID, 'inner := { show facets ff where sum(ff.body,1) == 2 }\n');
+fprintf(fileID, 'covershow:={show facets ff where (sum(ff.body,1)==2 or ff.frontbody==1 or ff.backbody==1 or ff.frontbody==3 or ff.backbody==3 or ff.frontbody==5 or ff.backbody==5 or ff.frontbody==7 or ff.backbody==7 or ff.frontbody==9 or ff.backbody==9 or ff.frontbody==11 or ff.backbody==11 or ff.frontbody==13 or ff.backbody==13 or ff.frontbody==15 or ff.backbody==15 or ff.frontbody==17 or ff.backbody==17 or ff.frontbody==19 or ff.backbody==19)}\n');
+fprintf(fileID, 'gogo := { g 3; r; g 5; r; V 25; g 25; V 25; g 25; V 25; g 25; V 25; g 25; V 25; g 25; V 25; }\n');
+fprintf(fileID, 'iter := { g 25; V 10; }\n');
+fprintf(fileID, 'iter2 := { u; iter; }\n');
+fprintf(fileID, 'start := { gogo; iter 25; r; iter2 10; }\n');
+
+fclose(fileID);
+
+type staircase_init_geom.txt
+```
