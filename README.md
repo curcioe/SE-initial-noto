@@ -2,7 +2,7 @@
 MATLAB files which generate initial geometry .txt files of model notochords for Surface Evolver
 
 Two files:
-1) generalized_bamboo_curcio
+1) generalized_bamboo
 2) staircasecode_20220220
 
 The first creates the initial geometry of a model notochord in bamboo configuration as a .txt file to be read into Surface Evolver
