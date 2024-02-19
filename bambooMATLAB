@@ -1,0 +1,232 @@
+```matlab
+%Generalized Bamboo
+clear all
+N = 50; % Number of cells 
+
+%parameters
+tensC = 1.5;
+gamma = 0.7;
+tensS = gamma*tensC;
+%press = 2;
+cell_opacity = .75;
+cross_sectional_area = 3.1415926*(7E-6)^2; %pi*r^2 + assumes r=7um ;
+eccentricity = 0;
+lambda =1.3; %wild-type lambda 1.3
+%the following are computed parameters
+%dependent on the values above
+tubeD = 2*sqrt(cross_sectional_area/pi);
+celld = tubeD/lambda;
+cell_volume = (4*pi*(celld/2)^3)/3;
+initial_height = (cell_volume/cross_sectional_area)*(2);%*2 -exclude *2 if checking bead unstable
+%initial position computed parameters
+radiusx = sqrt(cross_sectional_area/(pi*sqrt(1-eccentricity^2)));
+radiusy = sqrt((1-eccentricity^2)*radiusx^2);
+centerx = radiusx;
+centery = radiusy;
+
+%number of vertices
+numVertex = 8+(4*(N-1));
+vertMat = zeros(numVertex, 4); %one column for id, then x, y, z coords
+vertMat(:,1) = 1:1:numVertex;
+
+% Create vertices
+
+for i=1:(N+1)
+   %first vertex on level
+   vertMat(4*(i-1)+1,2) = centerx-radiusx;
+   vertMat(4*(i-1)+1,3) = centery-radiusy;
+   vertMat(4*(i-1)+1,4) = (i-1)*initial_height; 
+   %second vertex on level
+   vertMat(4*(i-1)+2,2) = centerx+radiusx;
+   vertMat(4*(i-1)+2,3) = centery-radiusy;
+   vertMat(4*(i-1)+2,4) = (i-1)*initial_height;
+   %third vertex on level
+   vertMat(4*(i-1)+3,2) = centerx+radiusx;
+   vertMat(4*(i-1)+3,3) = centery+radiusy;
+   vertMat(4*(i-1)+3,4) = (i-1)*initial_height;
+   %fourth vertex on level
+   vertMat(4*(i-1)+4,2) = centerx-radiusx;
+   vertMat(4*(i-1)+4,3) = centery+radiusy;
+   vertMat(4*(i-1)+4,4) = (i-1)*initial_height;
+end
+
+
+%Create edges
+totalEdges = 4+(8*N);
+edgeMat = zeros(totalEdges,3);
+edgeMat(:,1) = 1:1:totalEdges;
+
+%bottom of current layer, then stilts upward
+for i=1:N
+   edgeMat((8*(i-1))+1,2) = 4*(i-1)+1;
+   edgeMat((8*(i-1))+1,3) = 4*(i-1)+2;
+   edgeMat((8*(i-1))+2,2) = 4*(i-1)+2;
+   edgeMat((8*(i-1))+2,3) = 4*(i-1)+3;
+   edgeMat((8*(i-1))+3,2) = 4*(i-1)+3;
+   edgeMat((8*(i-1))+3,3) = 4*(i-1)+4;
+   edgeMat((8*(i-1))+4,2) = 4*(i-1)+4;
+   edgeMat((8*(i-1))+4,3) = 4*(i-1)+1;
+   edgeMat((8*(i-1))+5,2) = 4*(i-1)+1;
+   edgeMat((8*(i-1))+5,3) = 4*(i-1)+5;
+   edgeMat((8*(i-1))+6,2) = 4*(i-1)+2;
+   edgeMat((8*(i-1))+6,3) = 4*(i-1)+6;
+   edgeMat((8*(i-1))+7,2) = 4*(i-1)+3;
+   edgeMat((8*(i-1))+7,3) = 4*(i-1)+7;
+   edgeMat((8*(i-1))+8,2) = 4*(i-1)+4;
+   edgeMat((8*(i-1))+8,3) = 4*(i-1)+8;
+end
+%cap the top
+edgeMat(totalEdges-3,2) = numVertex-3;
+edgeMat(totalEdges-3,3) = numVertex-2;
+edgeMat(totalEdges-2,2) = numVertex-2;
+edgeMat(totalEdges-2,3) = numVertex-1;
+edgeMat(totalEdges-1,2) = numVertex-1;
+edgeMat(totalEdges-1,3) = numVertex;
+edgeMat(totalEdges,2) = numVertex;
+edgeMat(totalEdges,3) = numVertex-3;   
+
+%Create faces
+totalFaces = 6+((N-1)*5); %bottom cube 6 faces, then 5 new for every new level (cell)
+faceMat = zeros(totalFaces,5); %every face has four edges
+faceMat(:,1) = 1:1:totalFaces;
+for i=1:N 
+   faceMat(1+(5*(i-1)),2) = (8*(i-1))+1; %bottom face of level, always orient up
+   faceMat(1+(5*(i-1)),3) = (8*(i-1))+2;
+   faceMat(1+(5*(i-1)),4) = (8*(i-1))+3;
+   faceMat(1+(5*(i-1)),5) = (8*(i-1))+4;
+   faceMat(2+(5*(i-1)),2) = (8*(i-1))+1; %front face, always orient out
+   faceMat(2+(5*(i-1)),3) = (8*(i-1))+6; 
+   faceMat(2+(5*(i-1)),4) = -((8*(i-1))+9);
+   faceMat(2+(5*(i-1)),5) = -((8*(i-1))+5);
+   faceMat(3+(5*(i-1)),2) = (8*(i-1))+2; %right face, always orient out
+   faceMat(3+(5*(i-1)),3) = (8*(i-1))+7; 
+   faceMat(3+(5*(i-1)),4) = -((8*(i-1))+10);
+   faceMat(3+(5*(i-1)),5) = -((8*(i-1))+6);
+   faceMat(4+(5*(i-1)),2) = (8*(i-1))+3; %back face, always orient out
+   faceMat(4+(5*(i-1)),3) = (8*(i-1))+8; 
+   faceMat(4+(5*(i-1)),4) = -((8*(i-1))+11);
+   faceMat(4+(5*(i-1)),5) = -((8*(i-1))+7);
+   faceMat(5+(5*(i-1)),2) = (8*(i-1))+4; %left face, always orient out
+   faceMat(5+(5*(i-1)),3) = (8*(i-1))+5; 
+   faceMat(5+(5*(i-1)),4) = -((8*(i-1))+12);
+   faceMat(5+(5*(i-1)),5) = -((8*(i-1))+8);
+end
+%upper face, always orient up
+faceMat(totalFaces,2) = totalEdges-3;
+faceMat(totalFaces,3) = totalEdges-2;
+faceMat(totalFaces,4) = totalEdges-1;
+faceMat(totalFaces,5) = totalEdges;
+
+%Create bodies
+totalBodies = N;
+bodyMat = zeros(N,7); %each body has 6 faces
+bodyMat(:,1) = 1:1:totalBodies;
+
+%Face orientation (remember orientation of normal)
+for i=1:N
+   bodyMat(i,2) = -(1+(5*(i-1))); %bottom face needs to orient down
+   bodyMat(i,3) = 2+(5*(i-1));
+   bodyMat(i,4) = 3+(5*(i-1));
+   bodyMat(i,5) = 4+(5*(i-1));
+   bodyMat(i,6) = 5+(5*(i-1));
+   bodyMat(i,7) = 6+(5*(i-1)); %top already oriented up
+end
+
+
+% Now write the file to text
+
+fileID = fopen('evan_bamboo_test.txt','wt');
+%fprintf(fileID, 'GRAVITY_CONSTANT 0\n');
+%CONSIDER PUTTING FILE PATH HERE
+%fprintf(fileID,'// C:\....txt');
+%fprintf(fileID, strcat('PRESSURE ',string(press),'\n'));
+fprintf(fileID, strcat('PARAMETER tensC = ',string(tensC),'\n'));
+fprintf(fileID, strcat('PARAMETER gamma = ',string(gamma),'\n'));
+fprintf(fileID, strcat('PARAMETER tensS = ',string(gamma*tensC),'\n'));
+fprintf(fileID, strcat('PARAMETER cell_opacity = ',string(cell_opacity),'\n'));
+fprintf(fileID, strcat('PARAMETER cross_sectional_area = ',string(cross_sectional_area),'\n'));
+fprintf(fileID, strcat('PARAMETER eccentricity = ',string(eccentricity),'\n'));
+fprintf(fileID, strcat('PARAMETER lambda = ',string(lambda),'\n'));
+fprintf(fileID, '//The following are computed parameters.\n');
+fprintf(fileID, '//Do not change the formulas unless necessary.\n');
+fprintf(fileID, 'PARAMETER tubeD = 2*sqrt(cross_sectional_area/pi)\n');
+fprintf(fileID, 'PARAMETER celld = tubeD/lambda\n');
+fprintf(fileID, 'PARAMETER cell_volume = (4*pi*(celld/2)^3)/3\n');
+fprintf(fileID, 'PARAMETER initial_height = 2*cell_volume/cross_sectional_area\n');
+fprintf(fileID, '//initial positioning\n');
+fprintf(fileID, 'PARAMETER radiusx = sqrt(cross_sectional_area/(pi*sqrt(1-eccentricity^2)))\n');
+fprintf(fileID, 'PARAMETER radiusy = sqrt((1-eccentricity^2)*radiusx^2)\n');
+fprintf(fileID, 'PARAMETER centerx = radiusx\n');
+fprintf(fileID, 'PARAMETER centery = radiusy\n');
+%fprintf(fileID, 'constraint 1 //constrains bottom to z=0\n');
+%fprintf(fileID, 'formula: x3 = 0\n\n');
+%fprintf(fileID, 'constraint 2 //constrains top to z=initial_height\n');
+%fprintf(fileID, strcat('formula: x3 = ',string(N),'*initial_height\n\n'));
+fprintf(fileID, 'vertices\n');
+for i=1:numVertex
+   if i<=4 
+       fprintf(fileID,'%d %f %f %f \n', [vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);   
+   end
+   if i>=numVertex-3
+       fprintf(fileID,'%d %f %f %f \n', [vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);    
+   end
+   if (i>4 && i<numVertex-3)
+   fprintf(fileID,'%d %f %f %f \n',[vertMat(i,1);vertMat(i,2);vertMat(i,3);vertMat(i,4)]);
+   end
+end
+fprintf(fileID, '\nedges\n');
+for i=1:totalEdges
+   if i<=4
+      fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]); 
+   end
+   if (i>4 && i<totalEdges-3)
+       fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]);
+   end
+   if i>=totalEdges-3
+      fprintf(fileID,'%d %d %d \n',[edgeMat(i,1);edgeMat(i,2);edgeMat(i,3)]); 
+   end
+end
+
+%get flat faces - these will have tension 2*tensC
+%otherwise, these are upright faces, with tension tensS+tensC
+flatFaces = 1:1:(N+1);
+for i=1:(N+1)
+    flatFaces(1,i) = (5*(i-1))+1;    
+end
+
+fprintf(fileID,'\nfaces\n');
+
+for i=1:totalFaces
+    if i==1
+        fprintf(fileID,'%d %d %d %d %d color cyan tension tensS+tensC\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    elseif ismember(i,flatFaces) && i~=1 && i~=totalFaces
+        fprintf(fileID,'%d %d %d %d %d color magenta tension 2*tensC\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    elseif i==totalFaces
+        fprintf(fileID,'%d %d %d %d %d color cyan tension tensS+tensC\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    else
+        fprintf(fileID,'%d %d %d %d %d color cyan tension tensS+tensC\n',[faceMat(i,1);faceMat(i,2);faceMat(i,3);faceMat(i,4);faceMat(i,5)]);
+    end
+end
+    
+fprintf(fileID, '\nbodies\n');
+for i=1:totalBodies
+    fprintf(fileID,'%d %d %d %d %d %d %d volume cell_volume\n',[bodyMat(i,1);bodyMat(i,2);bodyMat(i,3);bodyMat(i,4);bodyMat(i,5);bodyMat(i,6);bodyMat(i,7)]); 
+end
+
+fprintf(fileID, '\n\nread\n');
+fprintf(fileID, 'U\n'); %for conjugate gradient method
+fprintf(fileID, 'delete facets where area=0\n');
+fprintf(fileID, 'set facet.opacity cell_opacity\n');
+fprintf(fileID, 'unfix radiusx\n');
+fprintf(fileID, 'unfix radiusy\n');
+fprintf(fileID, 'inner := { show facets ff where sum(ff.body,1) == 2 }\n');
+fprintf(fileID, 'gogo := { g 3; r; g 5; r; V 25; g 25; V 25; g 25; V 25; g 25; V 25; g 25; V 25; g 25; V 25; }\n');
+fprintf(fileID, 'iter := { g 25; V 10; }\n');
+fprintf(fileID, 'iter2 := { u; iter; }\n');
+fprintf(fileID, 'start := { gogo; iter 25; r; iter2 10; }\n');
+
+fclose(fileID);
+
+type evan_bamboo_test.txt
+
+``` 
