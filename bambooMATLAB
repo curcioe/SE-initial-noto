@@ -1,4 +1,4 @@
-```matlab
+```
 %Generalized Bamboo
 clear all
 N = 50; % Number of cells 
